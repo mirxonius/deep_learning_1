@@ -12,6 +12,7 @@ from torchvision import transforms as tf
 from torch.utils.data import random_split 
 from torchvision.datasets import MNIST
 
+from tqdm import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
@@ -59,27 +60,27 @@ class myConvModel(nn.Module):
     def __init__(self):
         super().__init__()
 
-        #W - širina kanala
-        #F - Širina jezgre/filtra
-        #P - Širina paddinga
+        #W - Channel width
+        #F - Filter width
+        #P - Paddng
         #S - Stride
-        #Nakon konvolucije izlazi su tipa: floor( (W +2P - F )/S +1)
+        #Convolution output shape is: floor( (W +2P - F )/S +1)
 
 
 
         self.net = nn.Sequential(OrderedDict([
         #Input 28x28
         ('conv1',nn.Conv2d(in_channels=1, out_channels=16,kernel_size=5,padding=2,stride = 1) ),
-        #Nakon prve konvolucije: (28 - 5 + 4)/1 + 1 = 28
+        #After the first conv: (28 - 5 + 4)/1 + 1 = 28
         ('maxpool1', nn.MaxPool2d(kernel_size = 2,stride=2)),
-        #Nakon prvog MaxPoola: 14x14
+        #First MaxPool: 14x14
         ("relu1",nn.ReLU()),
         ("conv2",nn.Conv2d(in_channels = 16, out_channels=32,kernel_size=5,padding=2)),
-        #Nakon druge konvolucije: (14 -5 + 4)/1 +1 = 14
+        #Second convolution: (14 -5 + 4)/1 +1 = 14
         ("maxpool2",nn.MaxPool2d(kernel_size=2,stride=2)),
-        #Nakon drugog MaxPoola: 7x7 
+        #Second MaxPool: 7x7 
         ("relu2",nn.ReLU()),
-        #Sve skupa ima 32 kanala veličine 7x7 -> 32*7*7 izlaza nakon operacije flatten
+        #Altoghether we are left with 32 channels of 7x7 images -> 32*7*7 is the shape of the FFN head
         ("flatten", nn.Flatten()),
         ('fc_1', nn.Linear(in_features=32*7*7,out_features= 512)),
         ('relu3', nn.ReLU()),
@@ -203,6 +204,7 @@ def training_loop(model,train_data,val_data,num_epochs = 8,batch_size = 50,learn
     val_history = []
 
     train_x, train_y = train_data
+    train_loader = DataLoader(train_data)
     train_x = torch.tensor(train_x).detach().float()
     train_y = torch.tensor(train_y).detach()
     
@@ -215,13 +217,13 @@ def training_loop(model,train_data,val_data,num_epochs = 8,batch_size = 50,learn
 
     for n in range(num_epochs):
         perm = torch.randperm(len(train_x))
-        shuff_x = torch.clone(train_x).detach().float()[perm]
-        shuff_y = torch.clone(train_y).detach().float()[perm]
+        #shuff_x = torch.clone(train_x).detach().float()[perm]
+        #shuff_y = torch.clone(train_y).detach().float()[perm]
 
-        x_batches = torch.split(shuff_x,batch_size)
-        y_batches = torch.split(shuff_y,batch_size)
+        #x_batches = torch.split(shuff_x,batch_size)
+        #y_batches = torch.split(shuff_y,batch_size)
 
-        for x,y in zip(x_batches,y_batches):
+        for x,y in tqdm(train_loader):
 
             loss = loss_fn(model,x, y,weight_decay=weight_decay)
             loss.backward()
